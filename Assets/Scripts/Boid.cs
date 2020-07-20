@@ -7,10 +7,10 @@ public class Boid : MonoBehaviour
     private const float minY = 0.3291666666f, maxY = 0.9125f;
 
     public static bool FollowTarget = false;
-    public static Vector2 Target = Vector2.negativeInfinity;
+    public static Vector2 Target = Vector2.zero;
     public static float SeparationAmount = 1, CoherenceAmount = 1, AlignmentAmount = 1;
 
-    [SerializeField] private Vector3 baseRotation;
+    [SerializeField] private float baseRotation;
     [Range(0, 10)] [SerializeField] private float maxSpeed = 1f;
 
     [Range(.1f, .5f)] [SerializeField] private float maxForce = .03f;
@@ -35,7 +35,7 @@ public class Boid : MonoBehaviour
     private void Start()
     {
         float angle = Random.Range(0, 2 * Mathf.PI);
-        transform.rotation = Quaternion.Euler(new Vector3(0, 0, angle) + baseRotation);
+        SetRotation(angle);
         velocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
         float randomDirection = Random.Range(0, 360);
         Vector3 euler = transform.eulerAngles;
@@ -52,8 +52,8 @@ public class Boid : MonoBehaviour
         }
         else
         {
-            var boidColliders = Physics2D.OverlapCircleAll(Position, neighborhoodRadius);
-            var boids = boidColliders.Select(o => o.GetComponent<Boid>()).ToList();
+            Collider2D[] boidColliders = Physics2D.OverlapCircleAll(Position, neighborhoodRadius);
+            List<Boid> boids = boidColliders.Select(o => o.GetComponent<Boid>()).ToList();
             boids.Remove(this);
 
             Flock(boids);
@@ -66,9 +66,9 @@ public class Boid : MonoBehaviour
 
     private void Flock(IEnumerable<Boid> boids)
     {
-        var alignment = Alignment(boids);
-        var separation = Separation(boids);
-        var cohesion = Cohesion(boids);
+        Vector2 alignment = Alignment(boids);
+        Vector2 separation = Separation(boids);
+        Vector2 cohesion = Cohesion(boids);
 
         acceleration = AlignmentAmount * alignment + CoherenceAmount * cohesion + SeparationAmount * separation;
     }
@@ -86,8 +86,13 @@ public class Boid : MonoBehaviour
 
     private void UpdateRotation()
     {
-        var angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
-        transform.rotation = Quaternion.Euler(new Vector3(0, 0, angle) + baseRotation);
+        float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
+        SetRotation(angle);
+    }
+
+    private void SetRotation(float angle)
+    {
+        transform.rotation = Quaternion.Euler(new Vector3(0, 0, angle + baseRotation));
     }
 
     private void SteerTowardsTarget()
@@ -97,16 +102,16 @@ public class Boid : MonoBehaviour
 
     private Vector2 Alignment(IEnumerable<Boid> boids)
     {
-        var velocity = Vector2.zero;
+        Vector2 velocity = Vector2.zero;
         if (!boids.Any()) return velocity;
 
-        foreach (var boid in boids)
+        foreach (Boid boid in boids)
         {
             velocity += boid.velocity;
         }
         velocity /= boids.Count();
 
-        var steer = Steer(velocity.normalized * maxSpeed);
+        Vector2 steer = Steer(velocity.normalized * maxSpeed);
         return steer;
     }
 
@@ -114,38 +119,39 @@ public class Boid : MonoBehaviour
     {
         if (!boids.Any()) return Vector2.zero;
 
-        var sumPositions = Vector2.zero;
-        foreach (var boid in boids)
+        Vector2 sumPositions = Vector2.zero;
+        foreach (Boid boid in boids)
         {
             sumPositions += boid.Position;
         }
-        var average = sumPositions / boids.Count();
-        var direction = average - Position;
+        Vector2 average = sumPositions / boids.Count();
+        Vector2 direction = average - Position;
 
-        var steer = Steer(direction.normalized * maxSpeed);
+        Vector2 steer = Steer(direction.normalized * maxSpeed);
         return steer;
     }
 
     private Vector2 Separation(IEnumerable<Boid> boids)
     {
-        var direction = Vector2.zero;
+        Vector2 direction = Vector2.zero;
         boids = boids.Where(o => DistanceTo(o) <= neighborhoodRadius / 2);
         if (!boids.Any()) return direction;
 
-        foreach (var boid in boids)
+        Vector2 difference;
+        foreach (Boid boid in boids)
         {
-            var difference = Position - boid.Position;
+            difference = Position - boid.Position;
             direction += difference.normalized / difference.magnitude;
         }
         direction /= boids.Count();
 
-        var steer = Steer(direction.normalized * maxSpeed);
+        Vector2 steer = Steer(direction.normalized * maxSpeed);
         return steer;
     }
 
     private Vector2 Steer(Vector2 desired)
     {
-        var steer = desired - velocity;
+        Vector2 steer = desired - velocity;
         steer = LimitMagnitude(steer, maxForce);
 
         return steer;

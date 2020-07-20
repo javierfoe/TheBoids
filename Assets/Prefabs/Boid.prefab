@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68724070febf86449b4bcb493d240c17, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseRotation: {x: 0, y: 0, z: -45}
+  baseRotation: -45
   maxSpeed: 3
   maxForce: 0.175
   neighborhoodRadius: 3
